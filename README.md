@@ -1,2 +1,2 @@
-# ZARK AUTOBOT X WS3-FCA 
-👀🤙
+# SINZU BOT X WS3-FCA 
+💞
