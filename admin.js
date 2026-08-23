@@ -15,7 +15,7 @@ module.exports.run = async function({ api, event }) {
 ━━━━━━━━━━━━━━━━━
 👑 BOT OWNER:
 • Name: sinzu
-• UID: 100085492109231
+• UID: 61592910700010
 
 🛡️ BOT ADMINS:
 • Full access to Admin Commands, GC moderation, and AI controls.
