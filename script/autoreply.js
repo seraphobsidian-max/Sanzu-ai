@@ -1,80 +1,98 @@
-const fs = require("fs");
-const path = require("path");
+const fs = require('fs');
+const path = require('path');
 
-const dbPath = path.join(__dirname, "..", "data", "autoreply.json");
+// Path para i-save ang settings ng bawat GC
+const dbPath = path.join(__dirname, 'autoreply_data.json');
 
-function getAutoReplies() {
-  const dir = path.dirname(dbPath);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  if (!fs.existsSync(dbPath)) fs.writeFileSync(dbPath, "{}", "utf8");
+// Helper para magbasa at magsulat ng data
+function loadData() {
+  if (!fs.existsSync(dbPath)) return {};
   try {
-    return JSON.parse(fs.readFileSync(dbPath, "utf8"));
-  } catch {
+    return JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+  } catch (e) {
     return {};
   }
 }
 
-function saveAutoReplies(data) {
-  fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), "utf8");
+function saveData(data) {
+  fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
 }
 
-module.exports.config = {
-  name: "autoreply",
-  version: "1.0.0",
-  hasPermission: 0,
-  credits: "sinzu",
-  description: "Mag-set ng auto-reply triggers sa bot",
-  usePrefix: true,
-  commandCategory: "Utility",
-  usages: "!autoreply add [keyword] => [sagot] | !autoreply list | !autoreply del [keyword]",
-  cooldowns: 3
+module.exports = {
+  config: {
+    name: "autoreply",
+    version: "1.0.0",
+    role: 0,
+    author: "YourName",
+    description: "Nagbibigay ng awtomatikong reply sa kahit anong chat na may on/off at custom message.",
+    usages: "[on/off/set] [mensahe kung magse-set]",
+    cooldown: 3
+  },
+
+  onRun: async ({ api, event, args }) => {
+    const { threadID, messageID } = event;
+    const action = args[0] ? args[0].toLowerCase() : "";
+    let data = loadData();
+
+    if (!data[threadID]) {
+      data[threadID] = { active: false, replyMessage: "Hello! Auto-reply ito ng bot." };
+    }
+
+    // 1. Command para I-ON
+    if (action === "on") {
+      data[threadID].active = true;
+      saveData(data);
+      return api.sendMessage("🟢 Tagumpay! Naka-ON na ang autoreply sa GC na ito.", threadID, messageID);
+    }
+
+    // 2. Command para I-OFF
+    if (action === "off") {
+      data[threadID].active = false;
+      saveData(data);
+      return api.sendMessage("🔴 Tagumpay! Naka-OFF na ang autoreply sa GC na ito.", threadID, messageID);
+    }
+
+    // 3. Command para PALITAN ang reply message
+    if (action === "set") {
+      const newReply = args.slice(1).join(" ");
+      if (!newReply) {
+        return api.sendMessage("⚠️ Mangyaring maglagay ng bagong mensahe. Halimbawa: /autoreply set Busy pa po si owner.", threadID, messageID);
+      }
+      data[threadID].replyMessage = newReply;
+      saveData(data);
+      return api.sendMessage(`✅ Matagumpay na nabago ang autoreply message sa:\n\n"${newReply}"`, threadID, messageID);
+    }
+
+    // Kung walang tamang argument, ipakita ang status
+    return api.sendMessage(
+      `🤖 **AUTOREPLY SETTINGS**\n\n` +
+      `• Status: ${data[threadID].active ? "Naka-ON 🟢" : "Naka-OFF 🔴"}\n` +
+      `• Kasalukuyang Reply: "${data[threadID].replyMessage}"\n\n` +
+      `💡 Mga Gamit:\n` +
+      `- !autoreply on\n` +
+      `- !autoreply off\n` +
+      `- !autoreply set [bagong mensahe]`,
+      threadID,
+      messageID
+    );
+  },
+
+  // Event listener para saluhin ang lahat ng chat ng members
+  onChat: async ({ api, event }) => {
+    const { threadID, senderID, body } = event;
+    
+    // Huwag pansinin kung ang bot ang nag-chat para iwasan ang endless loop
+    if (senderID === api.getCurrentUserID() || !body) return;
+
+    const data = loadData();
+    const threadData = data[threadID];
+
+    // Kung naka-on ang autoreply sa GC na ito at hindi ito command (hindi nagsisimula sa prefix)
+    if (threadData && threadData.active) {
+      // Pwede kang maglagay ng sarili mong prefix check kung meron ka
+      if (body.startsWith("!") || body.startsWith("/")) return; 
+
+      return api.sendMessage(threadData.replyMessage, threadID);
+    }
+  }
 };
-
-module.exports.run = async function({ api, event, args }) {
-  const { threadID, messageID } = event;
-  const replies = getAutoReplies();
-  if (!replies[threadID]) replies[threadID] = {};
-
-  const action = args[0]?.toLowerCase();
-
-  // 1. List All Auto Replies in this GC
-  if (action === "list") {
-    const keys = Object.keys(replies[threadID]);
-    if (keys.length === 0) {
-      return api.sendMessage("📭 Walang naka-set na auto-reply sa group chat na ito.", threadID, messageID);
-    }
-    const list = keys.map((k, i) => `${i + 1}. "${k}" ➔ "${replies[threadID][k]}"`).join("\n");
-    return api.sendMessage(`💬 [ NAKA-SET NA AUTO REPLIES ]\n\n${list}`, threadID, messageID);
-  }
-
-  // 2. Delete an Auto Reply
-  if (action === "del" || action === "remove") {
-    const key = args.slice(1).join(" ").toLowerCase();
-    if (!key || !replies[threadID][key]) {
-      return api.sendMessage(`❌ Hindi nahanap ang trigger keyword na "${key}".`, threadID, messageID);
-    }
-    delete replies[threadID][key];
-    saveAutoReplies(replies);
-    return api.sendMessage(`✓ Matagumpay na tinanggal ang auto-reply para sa "${key}".`, threadID, messageID);
-  }
-
-  // 3. Add Auto Reply (!autoreply add hi => kamusta kaibigan)
-  if (action === "add") {
-    const content = args.slice(1).join(" ");
-    if (!content.includes("=>")) {
-      return api.sendMessage("⚠️ Tamang Format:\n!autoreply add [trigger] => [sagot ng bot]\n\nHalimbawa:\n!autoreply add kumain ka na? => Opo, kakatapos lang busog na si Sanzu!", threadID, messageID);
-    }
-
-    const [trigger, response] = content.split("=>").map(s => s.trim());
-    if (!trigger || !response) {
-      return api.sendMessage("❌ Hindi maaaring blangko ang trigger o ang sagot.", threadID, messageID);
-    }
-
-    replies[threadID][trigger.toLowerCase()] = response;
-    saveAutoReplies(replies);
-    return api.sendMessage(`✓ [ AUTO-REPLY SET ]\n\nKapag may nag-type ng: "${trigger}"\nSasagot ang bot ng: "${response}"`, threadID, messageID);
-  }
-
-  return api.sendMessage("💡 Paggamit:\n• !autoreply add [keyword] => [sagot]\n• !autoreply list\n• !autoreply del [keyword]", threadID, messageID);
-};
-module.exports.onStart = module.exports.run;
