@@ -1,58 +1,72 @@
-module.exports.config = {
-  name: "help",
-  version: "1.0.0",
-  hasPermssion: 0, 
-  credits: "SINZU",
-  description: "Tingnan ang listahan ng mga available commands o ang detalye ng isang command.",
-  commandCategory: "system",
-  usages: "[command name]",
-  cooldowns: 3
-};
+const fs = require('fs');
+const path = require('path');
 
-module.exports.run = async function({ api, event, args }) {
-  // Access the global commands map (standard for Mirai-based bots)
-  const { commands } = global.client; 
-  const { threadID, messageID } = event;
-  const commandName = (args[0] || "").toLowerCase();
+module.exports = {
+  config: {
+    name: "help",
+    version: "1.0.0",
+    role: 0,
+    author: "YourName",
+    description: "Ipinapakita ang listahan ng lahat ng magagamit na commands",
+    usages: "[command name / pwedeng walang lagay]",
+    cooldown: 3
+  },
 
-  // If the user just types "!help" without specifying a command
-  if (!commandName) {
-    let msg = "╭─『 𝗔𝗩𝗔𝗜𝗟𝗔𝗕𝗟𝗘 𝗖𝗢𝗠𝗠𝗔𝗡𝗗𝗦 』\n";
-    let index = 1;
+  onRun: async ({ api, event, args }) => {
+    const { threadID, messageID } = event;
+    const commandsPath = __dirname; // assuming magkakasama sila sa isang folder
 
-    // Loop through all loaded commands and list them
-    for (const [name, cmd] of commands) {
-      msg += `│ ${index++}. ${name}\n`;
-    }
+    fs.readdir(commandsPath, (err, files) => {
+      if (err) {
+        return api.sendMessage("⚠️ Hindi ma-load ang mga commands.", threadID, messageID);
+      }
 
-    msg += `╰───────────────\n`;
-    msg += `\n💡 Type "help [command]" para makita ang paano gamitin ang isang command. (Ex: help ai)`;
+      // Salain ang mga .js files lamang maliban sa sarili nitong file kung gusto mo
+      const commandFiles = files.filter(file => file.endsWith('.js'));
+      const commandList = [];
 
-    return api.sendMessage(msg, threadID, messageID);
-  } 
-  
-  // If the user types "!help [command name]" (e.g., "!help weather")
-  else {
-    if (commands.has(commandName)) {
-      const cmd = commands.get(commandName).config;
-      
-      // Determine permission level text
-      let role = "Lahat ng Users";
-      if (cmd.hasPermssion === 1) role = "Group Admins";
-      if (cmd.hasPermssion === 2) role = "Bot Admin";
+      for (const file of commandFiles) {
+        try {
+          const pull = require(path.join(commandsPath, file));
+          if (pull.config && pull.config.name) {
+            commandList.push({
+              name: pull.config.name,
+              description: pull.config.description || "Walang description",
+              usages: pull.config.usages || ""
+            });
+          }
+        } catch (e) {
+          // Skip kung may error sa pagbasa ng specific file
+        }
+      }
 
-      let msg = `╭─『 𝗖𝗢𝗠𝗠𝗔𝗡𝗗 𝗜𝗡𝗙𝗢 』\n`;
-      msg += `│ 🏷️ Name: ${cmd.name}\n`;
-      msg += `│ 📝 Description: ${cmd.description}\n`;
-      msg += `│ ⚙️ Category: ${cmd.commandCategory}\n`;
-      msg += `│ 📌 Usage: ${cmd.name} ${cmd.usages}\n`;
-      msg += `│ ⏳ Cooldown: ${cmd.cooldowns} seconds\n`;
-      msg += `│ 👑 Permission: ${role}\n`;
-      msg += `╰───────────────`;
-      
+      // Kung may hinahanap na specific command ang user (hal. /help ai)
+      if (args[0]) {
+        const cmdName = args[0].toLowerCase();
+        const found = commandList.find(c => c.name.toLowerCase() === cmdName);
+        
+        if (!found) {
+          return api.sendMessage(`❌ Ang command na "${args[0]}" ay hindi nahanap.`, threadID, messageID);
+        }
+
+        return api.sendMessage(
+          `📖 **COMMAND INFO**\n\n` +
+          `• **Pangalan:** ${found.name}\n` +
+          `• **Description:** ${found.description}\n` +
+          `• **Paggamit:** ${found.usages}`,
+          threadID,
+          messageID
+        );
+      }
+
+      // Kapag pangkalahatang help list lang ang tiningnan
+      let msg = `🤖 **LISTAHAN NG MGA COMMANDS** (${commandList.length})\n\n`;
+      commandList.forEach((cmd, index) => {
+        msg += `${index + 1}. ${cmd.name} - ${cmd.description}\n`;
+      });
+      msg += `\n💡 Tip: I-type ang [prefix]help [command name] para sa detalye ng isang command.`;
+
       return api.sendMessage(msg, threadID, messageID);
-    } else {
-      return api.sendMessage(`❌ Walang command na nagngangalang "${commandName}". I-type ang "help" para makita ang lahat ng commands.`, threadID, messageID);
-    }
+    });
   }
 };
