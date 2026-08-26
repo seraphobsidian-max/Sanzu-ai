@@ -1,281 +1,276 @@
+/* ============================================================
+   SINZU BOT — "Dispatch Console" Design System
+   A control-panel aesthetic for a command-driven messenger bot.
+   Deep navy panels, amber signal accent, monospace command labels.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root {
+  --bg: #0F1620;
+  --panel: #171F2B;
+  --panel-raised: #1D2634;
+  --line: #263041;
+  --amber: #F5A623;
+  --amber-dim: #8A6420;
+  --teal: #4FD1C5;
+  --text: #E9EDF2;
+  --text-muted: #6C7A8C;
+  --danger: #E5484D;
+
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --radius: 6px;
+  --radius-lg: 10px;
+}
+
+* { box-sizing: border-box; }
+
 body {
-    min-height: 100vh;
-    position: relative;
-    padding: 20px;
-    background-color: #0e0e0e;
-    font-family: 'Courier Prime', sans-serif;
-    color: #fff;
-    opacity: 0;
-    animation: fadeInContent 1.2s forwards ease-in-out;
+  background: var(--bg);
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(255,255,255,0.035) 1px, transparent 0);
+  background-size: 22px 22px;
+  color: var(--text);
+  font-family: var(--font-body);
+  margin: 0;
+  padding: 0;
+  line-height: 1.55;
 }
 
-body::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-image: url('https://i.gifer.com/2YcW.gif');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
-    z-index: -1;
-    opacity: 0;
-    animation: fadeInBackground 1.8s forwards ease-in-out;
-}
-
-@keyframes fadeInContent {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
-@keyframes fadeInBackground {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
+/* ---------- Container / panel shell ---------- */
 .container {
-    background-image: url('');
-    background-size: cover;
-    background-repeat: no-repeat;
-    background-color: rgba(26, 26, 26, 0.8);
-    border-radius: 10px;
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3), 0 6px 6px rgba(0, 0, 0, 0.23);
-    padding: 20px;
-    margin-top: 20px;
-    margin-bottom: 10px;
+  max-width: 880px;
+  margin: 48px auto;
+  padding: 32px 36px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  position: relative;
 }
 
+/* Signature: corner "bolt" marks, like a physical panel casing */
+.container::before,
+.container::after {
+  content: "";
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--line);
+  top: 14px;
+}
+.container::before { left: 14px; }
+.container::after { right: 14px; }
 
-h1 {
-    color: #fff;
-}
-
-label {
-    color: #ccc;
-}
-
-.navbar {
-  background-color: rgba(26, 26, 26, 0.8);
-  color: #fff;
-  border-radius: 10px;
-}
-
-.navbar a {
-  color: #fff;
-}
-
-.navbar a:hover {
-  color: gray;
-}
-
-.navbar-brand {
-    color: #000;
-}
-
-.navbar-toggler-icon {
-   background-color: rgba(26, 26, 26, 0.8);
-}
-.dropdown-menu {
-  background-color: #222;
-}
-.centered-textarea {
-    display: block;
-    margin: 0 auto;
-    width: 100%;
-    min-height: 150px;
-    padding: 10px;
-    box-sizing: border-box;
-    border: 1px solid #555;
-    border-radius: 10px;
-    resize: none;
-    color: #fff;
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, #8e44ad, #3498db);
-    border-radius: 15px;
-    font-size: 14px;
-    color: #fff;
-}
-
-.btn-primary:hover {
-    background-color: #0056b3;
-    border: 1px solid #ff8800;
-}
-
-.success-message {
-    color: green;
-    margin-top: 10px;
-    font-size: 12px;
-}
-
-.footer {
-    padding: 10px 20px;
-    text-align: center;
-    font-size: 12px;
-    color: #b5b5b5;
-    position: relative;
-    background-color: rgba(26, 26, 26, 0.8);
-    width: 115%;
-    margin-left: -30px;
-    margin-bottom: -20px;
-}
-
-.footer p {
-  margin: 5px 0;
-}
-
-.footer a {
-  color: #999999;
-  text-decoration: none;
-  transition: color 0.3s;
-}
-
-.footer a:hover {
-  color: #ffffff;
-}
-
-.container-buttons {
-    margin-top: 20px;
-    text-align: center;
-}
-
-.container-buttons .btn {
-    margin: 5px;
-}
-
-#result {
-    padding: 5px;
-    margin-top: 20px;
-    border-radius: 10px;
-    font-size: 10px;
-    color: #fff;
-}
-
-.center-placeholder::placeholder {
-    text-align: center;
-    color: #ccc;
-}
-
-.custom-swal {
-  background-color: #222;
-  color: #fff;
-  font-size: 14px;
-}
-
-.form-check {
-    display: flex;
-    margin-top: 10px;
-    padding: 10px;
-    width: 90%;
-    align-items: center;
-    border: 1px solid #555;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background-color 0.3s ease, border-color 0.3s ease; 
-    background-color: #1a1a1a;
-    font-size: 15px;
-}
-
-.form-check:hover {
-    background-color: #222; 
-    border-color: #777; 
-}
-
-.form-check-input {
-    margin-right: 10px; 
-    opacity: 0;
-}
-
-.disable {
-    display: none;
-}
-
-#inputOfPrefix, #inputOfAdmin {
-    padding: 10px;
-    width: 90%;
-    border: 1px solid #555;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background-color 0.3s ease, border-color 0.3s ease; 
-    background-color: #1a1a1a;
-    color: #fff;
-    font-size: 15px;
-}
-
-#json-data {
-    background-image: url('https://i.gifer.com/YQgT.gif');
-    background-size: cover;
-    color: #fff;
-    background-repeat: no-repeat;
-}
-
-#listOfCommands, #listOfCommandsEvent, #prefixOfCommands, #adminOfCommands {
-    border: none !important;
-}
-
-#listOfCommands:not(.modal), #listOfCommandsEvent:not(.modal), #prefixOfCommands:not(.modal), #adminOfCommands:not(.modal) {
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3), 0 6px 6px rgba(0, 0, 0, 0.23);
-}
-
+/* ---------- Headings ---------- */
 .container h1 {
-    position: relative;
-    display: inline-block;
-    padding: 10px 20px;
-    margin-bottom: 20px;
-    background-color: #222;
-    border-radius: 8px;
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3), 0 6px 6px rgba(0, 0, 0, 0.23);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  margin: 0 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Live status dot before the title — the bot is "on air" */
+.container h1::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--teal);
+  box-shadow: 0 0 0 3px rgba(79, 209, 197, 0.15), 0 0 10px rgba(79, 209, 197, 0.6);
+  animation: pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+.container h2 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--amber);
+  margin: 32px 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
 }
 
 .container p {
-    line-height: 1.6;
+  color: var(--text-muted);
+  font-size: 14.5px;
+  margin: 0 0 16px;
 }
 
+/* ---------- Command list ---------- */
 .container ul {
-    padding-left: 20px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
 .container ul li {
-    list-style: none;
-}
-
-.container ul li::before {
-    content: '\2022';
-    color: #007bff;
-    font-weight: bold;
-    display: inline-block;
-    width: 1em;
-    margin-left: -1em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  transition: border-color 0.15s ease, transform 0.15s ease;
 }
 
 .container ul li + li {
-    margin-top: 10px;
+  margin-top: 10px;
 }
 
-@media (max-width: 768px) {
-    .container h1 {
-        font-size: 18px;
-    }
+.container ul li:hover {
+  border-color: var(--amber-dim);
+  transform: translateX(2px);
+}
+
+/* Command "switch" indicator — small LED before each command */
+.container ul li::before {
+  content: "";
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 8px rgba(245, 166, 35, 0.55);
+}
+
+.container ul li .cmd-name {
+  color: var(--amber);
+  font-weight: 600;
+}
+
+.container ul li .cmd-name::before {
+  content: "/";
+  color: var(--amber-dim);
+}
+
+.container ul li .cmd-desc {
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 13px;
+  margin-left: auto;
+  text-align: right;
+}
+
+/* ---------- Buttons ---------- */
+button,
+.btn {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--bg);
+  background: var(--amber);
+  border: none;
+  border-radius: var(--radius);
+  padding: 10px 18px;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+
+button:hover,
+.btn:hover {
+  filter: brightness(1.1);
+}
+
+button:active,
+.btn:active {
+  transform: scale(0.97);
+}
+
+button:focus-visible,
+.btn:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+/* ---------- Scroll-up button — restyled as a panel switch ---------- */
 #scrollUpBtn {
   position: fixed;
-  margin-bottom: 70px; 
-  right: 20px;
-  padding: 15px 30px;
-  font-size: 14px;
-  background-color: #555;
-  color: white;
-  border: none;
-  border-radius: 8px;
+  bottom: 24px;
+  right: 24px;
+  margin-bottom: 0;
+  padding: 12px 20px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--panel-raised);
+  color: var(--amber);
+  border: 1px solid var(--amber-dim);
+  border-radius: var(--radius);
   cursor: pointer;
   display: none;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+#scrollUpBtn:hover {
+  background: var(--amber);
+  color: var(--bg);
+  border-color: var(--amber);
+}
+
+/* ---------- Scrollbar (webkit) ---------- */
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb {
+  background: var(--panel-raised);
+  border: 2px solid var(--bg);
+  border-radius: 6px;
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .container h1::before { animation: none; }
+  .container ul li,
+  button, .btn, #scrollUpBtn { transition: none; }
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 768px) {
+  .container {
+    margin: 20px 12px;
+    padding: 24px 20px;
+  }
+
+  .container h1 {
+    font-size: 18px;
+  }
+
+  .container ul li {
+    flex-wrap: wrap;
+  }
+
+  .container ul li .cmd-desc {
+    margin-left: 19px;
+    text-align: left;
+    width: 100%;
+  }
+
+  #scrollUpBtn {
+    right: 16px;
+    bottom: 16px;
+    padding: 10px 16px;
+  }
+}
+
