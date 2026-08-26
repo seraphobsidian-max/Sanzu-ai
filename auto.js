@@ -15,6 +15,13 @@ const Utils = new Object({
   account: new Map(),
   cooldowns: new Map(),
 });
+// Siguraduhing meron na ang ./data folder, history.json, at session folder
+// BAGO mag-load ng commands — dahil may commands (tulad ng active-session.js)
+// na nagbabasa/naghahanap ng history.json habang nilo-load pa lang sila.
+if (!fs.existsSync('./data')) fs.mkdirSync('./data', { recursive: true });
+if (!fs.existsSync('./data/history.json')) fs.writeFileSync('./data/history.json', '[]', 'utf-8');
+if (!fs.existsSync('./data/session')) fs.mkdirSync('./data/session', { recursive: true });
+if (!fs.existsSync('./data/database.json')) fs.writeFileSync('./data/database.json', '[]', 'utf-8');
 fs.readdirSync(script).forEach((file) => {
   const scripts = path.join(script, file);
   const stats = fs.statSync(scripts);
