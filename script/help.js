@@ -1,72 +1,72 @@
-const fs = require('fs');
-const path = require('path');
-
 module.exports = {
   config: {
     name: "help",
+    aliases: ["h"],
     version: "1.0.0",
     role: 0,
-    author: "YourName",
-    description: "Ipinapakita ang listahan ng lahat ng magagamit na commands",
-    usages: "[command name / pwedeng walang lagay]",
+    hasPrefix: true,
+    description: "Shows all available commands",
+    usage: "!help",
+    credits: "sinzu",
     cooldown: 3
   },
 
-  onRun: async ({ api, event, args }) => {
-    const { threadID, messageID } = event;
-    const commandsPath = __dirname; // assuming magkakasama sila sa isang folder
+  run: async ({ api, event }) => {
+    const msg = `╔══════════════════════════╗
+   🌸 𝐒𝐀𝐍𝐙𝐔 𝐀𝐈 𝐂𝐎𝐌𝐌𝐀𝐍𝐃 𝐂𝐄𝐍𝐓𝐄𝐑 🌸
+╚══════════════════════════╝
 
-    fs.readdir(commandsPath, (err, files) => {
-      if (err) {
-        return api.sendMessage("⚠️ Hindi ma-load ang mga commands.", threadID, messageID);
-      }
+🤖 ─── [ AI & ASSISTANCE ]
+ • !ai [tanong] ➔ Google Gemini 3.7 AI
+ • !lyrics [kanta] ➔ Song Lyrics Finder
+ • !weather [lungsod] ➔ Live Weather Report
+ • !translate [tl/en] ➔ Instant Translator
+ • !quote ➔ Daily Motivation & Wisdom
 
-      // Salain ang mga .js files lamang maliban sa sarili nitong file kung gusto mo
-      const commandFiles = files.filter(file => file.endsWith('.js'));
-      const commandList = [];
+🪙 ─── [ ECONOMY & CASINO ]
+ • !coins ➔ Tingnan ang iyong Balanse
+ • !coins daily ➔ Libreng Arawang Barya
+ • !coins pay @tag [amt] ➔ Magpadala ng Barya
+ • !slot [taya] ➔ 🎰 Mega Jackpot Slot Machine
 
-      for (const file of commandFiles) {
-        try {
-          const pull = require(path.join(commandsPath, file));
-          if (pull.config && pull.config.name) {
-            commandList.push({
-              name: pull.config.name,
-              description: pull.config.description || "Walang description",
-              usages: pull.config.usages || ""
-            });
-          }
-        } catch (e) {
-          // Skip kung may error sa pagbasa ng specific file
-        }
-      }
+🎨 ─── [ CREATIVE & MEDIA ]
+ • !banner [Title] | [Sub] ➔ HD Banner Maker
+ • !pinterest [query] ➔ Aesthetic Wallpapers
+ • !shoti ➔ Random Viral Video
 
-      // Kung may hinahanap na specific command ang user (hal. /help ai)
-      if (args[0]) {
-        const cmdName = args[0].toLowerCase();
-        const found = commandList.find(c => c.name.toLowerCase() === cmdName);
-        
-        if (!found) {
-          return api.sendMessage(`❌ Ang command na "${args[0]}" ay hindi nahanap.`, threadID, messageID);
-        }
+💬 ─── [ CHATBOT AUTOMATION ]
+ • !autoreply add [k] => [v] ➔ Custom Auto Reply
+ • !autoreply list ➔ Listahan ng Triggers
+ • !autoreply del [k] ➔ Tanggalin ang Trigger
 
-        return api.sendMessage(
-          `📖 **COMMAND INFO**\n\n` +
-          `• **Pangalan:** ${found.name}\n` +
-          `• **Description:** ${found.description}\n` +
-          `• **Paggamit:** ${found.usages}`,
-          threadID,
-          messageID
-        );
-      }
+🛡️ ─── [ GROUP & MODERATION ]
+ • !lockgcname on [name] ➔ Anti-Change GC Lock
+ • !lockgcname off ➔ Unlock GC Name
+ • !kick @tag ➔ Kick Member (Admin)
+ • !adduser [UID] ➔ Magdagdag sa Group
+ • !setname [nickname] ➔ Palitan ang Nickname
 
-      // Kapag pangkalahatang help list lang ang tiningnan
-      let msg = `🤖 **LISTAHAN NG MGA COMMANDS** (${commandList.length})\n\n`;
-      commandList.forEach((cmd, index) => {
-        msg += `${index + 1}. ${cmd.name} - ${cmd.description}\n`;
-      });
-      msg += `\n💡 Tip: I-type ang [prefix]help [command name] para sa detalye ng isang command.`;
+🎮 ─── [ FUN & GAMES ]
+ • !joke ➔ Nakakatawang Pinoy Jokes
+ • !coinflip ➔ Heads o Tails Toss
+ • !roll [bilang] ➔ Random Dice Roll
+ • !slap @tag ➔ Sampalin ang Kaibigan
+ • !hug @tag ➔ Yakapin ang Kasama
 
-      return api.sendMessage(msg, threadID, messageID);
-    });
+⚡ ─── [ SYSTEM & UTILITY ]
+ • !help [cmd] ➔ Gabay sa partikular na command
+ • !uptime ➔ 24/7 Server Status sa Render
+ • !ping ➔ Latency & Response Speed (ms)
+ • !uid [@tag/reply] ➔ Facebook User ID
+ • !tid ➔ Group Chat Thread ID
+ • !unsend ➔ Tanggalin ang Bot Message
+ • !admin ➔ Bot Owners & Moderators
+ • !restart ➔ I-reboot ang Bot (Owner)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📌 Prefix: [ ! ] | Total Commands: 28
+👑 Developer: sinzu | Engine: ws3-fca + Gemini`;
+
+    return api.sendMessage(msg, event.threadID, event.messageID);
   }
 };
