@@ -1,51 +1,132 @@
-module.exports.config = {
-  name: "announce",
-  version: "1.0.0",
-  hasPermssion: 2, // 2 is usually for Bot Admins only
-  credits: "Developer",
-  description: "Mag-announce ng mensahe sa lahat ng Group Chats kung saan kasali ang bot.",
-  commandCategory: "admin",
-  usages: "[mensahe]",
-  cooldowns: 5
-};
+module.exports = {
+  config: {
+    name: "announce",
+    aliases: ["announcement", "broadcast", "bc"],
+    version: "1.0.0",
+    role: 1,
+    hasPrefix: true,
+    description: "Mag-broadcast ng announcement sa lahat ng GC",
+    usage: "!announce [message]",
+    credits: "sinzu",
+    cooldown: 30
+  },
 
-module.exports.run = async function({ api, event, args }) {
-  // Combine all arguments to form the message
-  const message = args.join(" ");
-  
-  if (!message) {
-    return api.sendMessage("⚠️ Pakilagay ang mensahe na gusto mong i-announce.\nFormat: !announce [mensahe]", event.threadID);
-  }
-
-  api.sendMessage("⏳ Nagsisimula na i-send ang announcement sa mga GCs...", event.threadID);
-
-  try {
-    // Fetch recent threads from the bot's inbox
-    const threadList = await api.getThreadList(100, null, ["INBOX"]);
-    let successCount = 0;
-    let failedCount = 0;
-
-    for (const thread of threadList) {
-      // Check if the thread is a group chat
-      if (thread.isGroup) {
-        try {
-          // Send the message to the group
-          await api.sendMessage(`[ 📢 𝗕𝗢𝗧 𝗔𝗡𝗡𝗢𝗨𝗡𝗖𝗘𝗠𝗘𝗡𝗧 ]\n\n${message}`, thread.threadID);
-          successCount++;
-          
-          // Small delay (1 second) to prevent the bot from getting flagged/banned by Facebook for spamming
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        } catch (error) {
-          failedCount++; // Counts GCs where the bot is muted or removed
-        }
-      }
+  run: async ({ api, event, args }) => {
+    if (!args.length) {
+      return api.sendMessage(
+        "📢 Usage:\n!announce [message]\n\nExample:\n!announce Maintenance mamayang 10PM.",
+        event.threadID,
+        event.messageID
+      );
     }
 
-    // Send the final report back to the admin who used the command
-    return api.sendMessage(`✅ 𝗕𝗿𝗼𝗮𝗱𝗰𝗮𝘀𝘁 𝗖𝗼𝗺𝗽𝗹𝗲𝘁𝗲𝗱!\n\nNa-send sa ${successCount} na GCs.\nFailed: ${failedCount}`, event.threadID);
+    const message = args.join(" ");
 
-  } catch (error) {
-    console.error(error);
-    return api.sendMessage("❌ May nangyaring error habang kinukuha ang listahan ng mga GC.", event.threadID);
+    const announcement = `╔══════════════════════════╗
+       📢 𝐒𝐀𝐍𝐙𝐔 𝐀𝐍𝐍𝐎𝐔𝐍𝐂𝐄𝐌𝐄𝐍𝐓
+╚══════════════════════════╝
+
+${message}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👑 Official Bot Announcement
+🤖 SANZU BOT`;
+
+    try {
+      /*
+       * Kunin ang thread IDs na kilala ng bot.
+       * Ipinapakita muna dito ang kasalukuyang thread bilang fallback.
+       */
+      const threadIDs = new Set();
+
+      if (event.threadID) {
+        threadIDs.add(event.threadID);
+      }
+
+      /*
+       * Kung supported ng FCA version mo ang getThreadList,
+       * kunin ang mga thread na available sa account.
+       */
+      if (typeof api.getThreadList === "function") {
+        const threads = await new Promise((resolve, reject) => {
+          api.getThreadList(
+            100,
+            null,
+            ["INBOX"],
+            (err, data) => {
+              if (err) return reject(err);
+              resolve(data || []);
+            }
+          );
+        });
+
+        for (const thread of threads) {
+          if (
+            thread &&
+            thread.threadID &&
+            thread.isGroup
+          ) {
+            threadIDs.add(thread.threadID);
+          }
+        }
+      }
+
+      if (!threadIDs.size) {
+        return api.sendMessage(
+          "❌ Walang GC na nakita.",
+          event.threadID,
+          event.messageID
+        );
+      }
+
+      let sent = 0;
+      let failed = 0;
+
+      for (const threadID of threadIDs) {
+        try {
+          await api.sendMessage(
+            announcement,
+            threadID
+          );
+
+          sent++;
+
+          // Small delay para hindi biglang sabay-sabay
+          await new Promise(resolve =>
+            setTimeout(resolve, 1000)
+          );
+
+        } catch (error) {
+          failed++;
+          console.error(
+            `Failed to announce to ${threadID}:`,
+            error.message
+          );
+        }
+      }
+
+      return api.sendMessage(
+        `✅ ANNOUNCEMENT SENT
+
+📢 Message:
+${message}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📨 Successfully sent: ${sent}
+❌ Failed: ${failed}
+📊 Total GC processed: ${threadIDs.size}`,
+        event.threadID,
+        event.messageID
+      );
+
+    } catch (error) {
+      console.error("Global announce error:", error);
+
+      return api.sendMessage(
+        `❌ Nagkaroon ng error sa global announcement.\n\n${error.message}`,
+        event.threadID,
+        event.messageID
+      );
+    }
   }
 };
