@@ -1,127 +1,201 @@
-const yts = require("yt-search");
-const { execFile } = require("child_process");
 const fs = require("fs");
 const path = require("path");
+const { execFile } = require("child_process");
+const util = require("util");
+
+const execFileAsync = util.promisify(execFile);
 
 module.exports = {
   config: {
     name: "yt",
-    aliases: ["youtube", "playyt"],
-    version: "1.0.0",
+    aliases: ["youtube", "ytdl"],
+    version: "2.0.0",
     role: 0,
     hasPrefix: true,
-    description: "Search and send YouTube video",
-    usage: "/yt [search]"
+    description: "Download YouTube videos",
+    usage: "/yt <YouTube URL>",
+    credits: "sinzu",
+    cooldown: 10
   },
 
-  async run({ api, event, args }) {
+  run: async ({ api, event, args }) => {
     const { threadID, messageID } = event;
 
-    if (!args.length) {
+    if (!args[0]) {
       return api.sendMessage(
-        "❌ Ilagay ang gusto mong hanapin.\n\nExample:\n/yt Bruno Mars It Will Rain",
+        "❌ Usage:\n/yt <YouTube URL>\n\nExample:\n/yt https://youtube.com/watch?v=xxxx",
         threadID,
         messageID
       );
     }
 
-    const query = args.join(" ");
+    const url = args[0];
 
-    try {
-      await api.sendMessage(
-        `🔎 Searching YouTube for:\n"${query}"\n\n⏳ Please wait...`,
+    if (!/^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//i.test(url)) {
+      return api.sendMessage(
+        "❌ Invalid YouTube URL.",
         threadID,
         messageID
       );
+    }
 
-      const results = await yts(query);
+    const tempDir = path.join(__dirname, "../temp");
 
-      if (!results.videos || !results.videos.length) {
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    const output = path.join(
+      tempDir,
+      `yt_${Date.now()}_${Math.random().toString(36).slice(2)}.mp4`
+    );
+
+    try {
+      await api.sendMessage(
+        "⏳ Downloading YouTube video...\n\nPlease wait.",
+        threadID
+      );
+
+      // Check yt-dlp
+      let ytdlp = "yt-dlp";
+
+      try {
+        await execFileAsync("yt-dlp", ["--version"]);
+      } catch {
+        // Try Python module
+        try {
+          await execFileAsync("python", ["-m", "yt_dlp", "--version"]);
+          ytdlp = "python";
+        } catch {
+          return api.sendMessage(
+            "❌ yt-dlp is not installed.\n\nInstall it using:\n\npip install -U yt-dlp",
+            threadID,
+            messageID
+          );
+        }
+      }
+
+      let commandArgs;
+
+      if (ytdlp === "python") {
+        commandArgs = [
+          "-m",
+          "yt_dlp",
+          "-f",
+          "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b",
+          "--merge-output-format",
+          "mp4",
+          "--no-playlist",
+          "--max-filesize",
+          "50M",
+          "-o",
+          output,
+          url
+        ];
+      } else {
+        commandArgs = [
+          "-f",
+          "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b",
+          "--merge-output-format",
+          "mp4",
+          "--no-playlist",
+          "--max-filesize",
+          "50M",
+          "-o",
+          output,
+          url
+        ];
+      }
+
+      try {
+        await execFileAsync(ytdlp, commandArgs, {
+          timeout: 180000,
+          maxBuffer: 10 * 1024 * 1024
+        });
+      } catch (err) {
+        let error = err.stderr || err.stdout || err.message || "";
+
+        if (error.includes("Sign in")) {
+          error = "YouTube requires sign-in for this video.";
+        } else if (error.includes("Private video")) {
+          error = "The video is private.";
+        } else if (error.includes("Video unavailable")) {
+          error = "The video is unavailable.";
+        } else if (
+          error.includes("File is larger than max-filesize")
+        ) {
+          error = "The video is larger than the 50MB limit.";
+        } else if (error.includes("Unsupported URL")) {
+          error = "Unsupported or invalid YouTube URL.";
+        } else if (error.includes("ffmpeg")) {
+          error = "FFmpeg is missing. Install it using: pkg install ffmpeg -y";
+        } else {
+          error = error.slice(-1500);
+        }
+
+        throw new Error(error);
+      }
+
+      if (!fs.existsSync(output)) {
+        throw new Error(
+          "Download finished but the output video was not found."
+        );
+      }
+
+      const stats = fs.statSync(output);
+
+      if (stats.size === 0) {
+        throw new Error("Downloaded file is empty.");
+      }
+
+      // Messenger attachment limit protection
+      if (stats.size > 50 * 1024 * 1024) {
+        fs.unlinkSync(output);
+
         return api.sendMessage(
-          "❌ Walang nahanap na video.",
+          "❌ Hindi ma-send ang video.\n\n" +
+          "📦 File size is larger than 50MB.",
           threadID,
           messageID
         );
       }
 
-      const video = results.videos[0];
-
-      const cacheDir = path.join(__dirname, "../cache");
-
-      if (!fs.existsSync(cacheDir)) {
-        fs.mkdirSync(cacheDir, { recursive: true });
-      }
-
-      const output = path.join(
-        cacheDir,
-        `yt_${Date.now()}.mp4`
-      );
-
-      await api.sendMessage(
-        `🎬 Found:\n${video.title}\n\n📥 Downloading video...`,
-        threadID
-      );
-
-      await new Promise((resolve, reject) => {
-        execFile(
-          "yt-dlp",
-          [
-            "-f",
-            "mp4[height<=360]/mp4",
-            "--no-playlist",
-            "--max-filesize",
-            "50M",
-            "-o",
-            output,
-            video.url
-          ],
-          {
-            maxBuffer: 1024 * 1024 * 10
-          },
-          (error, stdout, stderr) => {
-            if (error) {
-              reject(error);
-            } else {
-              resolve();
-            }
-          }
-        );
-      });
-
-      if (!fs.existsSync(output)) {
-        throw new Error("Video file was not created.");
-      }
-
       await api.sendMessage(
         {
-          body:
-            `🎬 ${video.title}\n\n` +
-            `👤 ${video.author.name}\n` +
-            `⏱️ ${video.timestamp}\n` +
-            `🔗 ${video.url}`,
+          body: "✅ YouTube video downloaded!",
           attachment: fs.createReadStream(output)
         },
         threadID,
         messageID
       );
 
-      // Delete temporary file
+      // Cleanup
       setTimeout(() => {
-        if (fs.existsSync(output)) {
-          fs.unlinkSync(output);
-        }
+        try {
+          if (fs.existsSync(output)) {
+            fs.unlinkSync(output);
+          }
+        } catch {}
       }, 10000);
 
     } catch (error) {
-      console.error("YT ERROR:", error);
+      console.error("[YT ERROR]", error);
+
+      if (fs.existsSync(output)) {
+        try {
+          fs.unlinkSync(output);
+        } catch {}
+      }
 
       return api.sendMessage(
         "❌ Hindi ma-download ang video.\n\n" +
-        "Possible reason:\n" +
-        "• Masyadong malaki ang video\n" +
-        "• Hindi available ang video\n" +
-        "• Nagbago ang YouTube format\n" +
-        "• Hindi naka-install ang yt-dlp",
+        "🔎 Error:\n" +
+        `${error.message || "Unknown error"}\n\n` +
+        "Possible fix:\n" +
+        "• Update yt-dlp: pip install -U yt-dlp\n" +
+        "• Install FFmpeg: pkg install ffmpeg -y\n" +
+        "• Check kung available ang video\n" +
+        "• Try another YouTube URL",
         threadID,
         messageID
       );
