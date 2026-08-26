@@ -2,7 +2,7 @@ module.exports = {
   config: {
     name: "help",
     aliases: ["h", "commands"],
-    version: "2.0.0",
+    version: "3.0.0",
     role: 0,
     hasPrefix: true,
     description: "Shows all available commands",
@@ -12,9 +12,9 @@ module.exports = {
   },
 
   run: async ({ api, event }) => {
-    const msg = `╔════════════════════════════╗
-      🌸 𝐒𝐀𝐍𝐙𝐔 𝐀𝐈 𝐂𝐎𝐌𝐌𝐀𝐍𝐃 𝐂𝐄𝐍𝐓𝐄𝐑
-╚════════════════════════════╝
+    const msg = `╔══════════════════════════════════╗
+        🌸 𝐒𝐀𝐍𝐙𝐔 𝐀𝐈 𝐂𝐎𝐌𝐌𝐀𝐍𝐃 𝐂𝐄𝐍𝐓𝐄𝐑
+╚══════════════════════════════════╝
 
 🤖 ─── [ 𝐀𝐈 & 𝐀𝐒𝐒𝐈𝐒𝐓𝐀𝐍𝐂𝐄 ]
 
@@ -34,138 +34,131 @@ module.exports = {
   └ Daily Motivation & Wisdom
 
 
-💰 ─── [ 𝐄𝐂𝐎𝐍𝐎𝐌𝐘 & 𝐂𝐀𝐒𝐈𝐍𝐎 ]
+🎵 ─── [ 𝐌𝐔𝐒𝐈𝐂 & 𝐕𝐈𝐃𝐄𝐎 ]
 
-• /coins
-  └ Tingnan ang iyong balance
+• /song [kanta]
+  └ Search & send song as MP4
 
-• /coins daily
-  └ Daily coin reward
+• /yt [search]
+  └ Search & send YouTube video
 
-• /coins pay @tag [amount]
-  └ Magpadala ng coins
+• /youtube [search]
+  └ YouTube video search
 
-• /slot [taya]
-  └ 🎰 Slot Machine
-
-• /rich
-  └ 🏆 Top 10 Richest Users
+• /playyt [search]
+  └ YouTube video player
 
 
-🎨 ─── [ 𝐂𝐑𝐄𝐀𝐓𝐈𝐕𝐄 & 𝐌𝐄𝐃𝐈𝐀 ]
+💰 ─── [ 𝐄𝐂𝐎𝐍𝐎𝐌𝐘 ]
 
-• /banner [title] | [sub]
-  └ HD Banner Maker
+• /balance
+  └ Check your money & coins
 
-• /pinterest [query]
-  └ Aesthetic Images
+• /daily
+  └ Claim daily cash reward
 
-• /shoti
-  └ Random Viral Video
+• /bet [amount]
+  └ Bet your money
 
+• /transfer [@user] [amount]
+  └ Transfer cash to another user
 
-💬 ─── [ 𝐀𝐔𝐓𝐎𝐌𝐀𝐓𝐈𝐎𝐍 ]
+• /top
+  └ Top richest users
 
-• /autoreply add [key] => [reply]
-  └ Add Auto Reply
+• /toprich
+  └ Richest users leaderboard
 
-• /autoreply list
-  └ List Auto Replies
-
-• /autoreply del [key]
-  └ Delete Auto Reply
-
-
-🛡️ ─── [ 𝐆𝐑𝐎𝐔𝐏 & 𝐌𝐎𝐃𝐄𝐑𝐀𝐓𝐈𝐎𝐍 ]
-
-• /lockgcname on [name]
-  └ Lock GC Name
-
-• /lockgcname off
-  └ Unlock GC Name
-
-• /kick @tag
-  └ Remove Member
-
-• /adduser [UID]
-  └ Add User to Group
-
-• /setname [nickname]
-  └ Change Nickname
+• /topexp
+  └ Top EXP leaderboard
 
 
-🎮 ─── [ 𝐅𝐔𝐍 & 𝐆𝐀𝐌𝐄𝐒 ]
+👑 ─── [ 𝐀𝐃𝐌𝐈𝐍 ]
 
-• /joke
-  └ Pinoy Jokes
+• /setbal [@user] [amount]
+  └ Set user's money & coins
 
-• /coinflip
-  └ Heads or Tails
+• /setcash [@user] [amount]
+  └ Set user's cash
 
-• /roll [number]
-  └ Random Dice
+• /setbalance [@user] [amount]
+  └ Set user's balance
 
-• /slap @tag
-  └ Slap Someone
+• /givecash [@user] [amount]
+  └ Give cash to a user
 
-• /hug @tag
-  └ Hug Someone
+• /takecash [@user] [amount]
+  └ Remove cash from a user
+
+• /admin
+  └ View admin commands
 
 
-⚡ ─── [ 𝐒𝐘𝐒𝐓𝐄𝐌 & 𝐔𝐓𝐈𝐋𝐈𝐓𝐘 ]
+😂 ─── [ 𝐅𝐔𝐍 & 𝐑𝐀𝐍𝐃𝐎𝐌 ]
+
+• /slap [username]
+  └ Slap a user with a GIF
+
+• /sampal [username]
+  └ Alias of /slap
+
+• /slot [amount]
+  └ Play the slot machine
+
+• /megaslot [amount]
+  └ Play Mega Slot
+
+
+🛠️ ─── [ 𝐔𝐓𝐈𝐋𝐈𝐓𝐘 ]
 
 • /help
-  └ Show Command Center
+  └ Show all commands
 
-• /help [command]
-  └ Command Information
+• /h
+  └ Shortcut for help
 
-• /ping
-  └ Bot Response Speed
+• /commands
+  └ Show command list
+
+• /prefix
+  └ Show bot prefix
+
+• /info
+  └ Bot information
 
 • /uptime
-  └ Bot Uptime
+  └ Bot uptime
 
-• /uid
-  └ Get User ID
-
-• /tid
-  └ Get Thread ID
-
-• /unsend
-  └ Unsend Bot Message
-
-• /admin
-  └ 👑 Admin Command Center
+• /ping
+  └ Check bot response
 
 
-👑 ─── [ 𝐀𝐃𝐌𝐈𝐍 & 𝐄𝐂𝐎𝐍𝐎𝐌𝐘 ]
+📚 ─── [ 𝐆𝐔𝐈𝐃𝐄 ]
 
-• /setbal @tag [amount]
-  └ Set User Balance
-
-• /setbal [amount]
-  └ Set Balance by Reply
+• /help [command]
+  └ View command details
 
 • /admin
-  └ View Admin Commands
+  └ View administrator tools
 
-• /announce [message]
-  └ Broadcast Announcement
+• Reply + /setbal [amount]
+  └ Set balance of replied user
+
+• Reply + /givecash [amount]
+  └ Give cash to replied user
 
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 Prefix: [ / ]
-📊 Use /help [command] for details
+╔══════════════════════════════════╗
+        🌸 𝐒𝐀𝐍𝐙𝐔 𝐀𝐈 𝐒𝐘𝐒𝐓𝐄𝐌
+╚══════════════════════════════════╝
 
-👑 Developer: SINZU
-🤖 Engine: WS3-FCA
-🌸 SANZU AI COMMAND CENTER`;
+💠 Total Commands: 30+
+⚡ Fast • Stable • Easy to Use
+👑 Admin • Economy • AI • Music • Fun
 
-    return api.sendMessage(
-      msg,
-      event.threadID,
-      event.messageID
-    );
+Type /help [command] for more information.
+`;
+
+    return api.sendMessage(msg, event.threadID, event.messageID);
   }
 };
