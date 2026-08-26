@@ -216,6 +216,15 @@ process.on('unhandledRejection', (reason) => {
   console.error('Unhandled Promise Rejection:', reason);
 });
 async function accountLogin(state, enableCommands = [], prefix, admin = []) {
+  // Palaging i-enable LAHAT ng na-load na commands/events sa halip na
+  // umasa sa listahan na galing sa login form (na siyang dahilan
+  // kung bakit "help" lang ang gumagana dati). Ang role/permission
+  // check sa ibaba (role 1/2/3 = admin/owner-only) ay hindi nagbago,
+  // kaya nananatiling protektado ang mga admin-only command.
+  enableCommands = [
+    { commands: Array.from(Utils.commands.values()).map(c => c.name) },
+    { handleEvent: Array.from(Utils.handleEvent.values()).map(c => c.name) }
+  ];
   return new Promise((resolve, reject) => {
     login({
       appState: state
