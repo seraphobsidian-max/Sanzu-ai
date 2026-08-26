@@ -9,11 +9,12 @@ module.exports = {
   config: {
     name: "yt",
     aliases: ["youtube", "ytdl"],
-    version: "2.0.0",
+    version: "3.0.0",
     role: 0,
     hasPrefix: true,
-    description: "Download YouTube videos",
-    usage: "/yt <YouTube URL>",
+    prefix: "/",
+    description: "Search at mag-download ng YouTube video",
+    usage: "/yt <search term o YouTube URL>",
     credits: "sinzu",
     cooldown: 10
   },
@@ -23,179 +24,85 @@ module.exports = {
 
     if (!args[0]) {
       return api.sendMessage(
-        "❌ Usage:\n/yt <YouTube URL>\n\nExample:\n/yt https://youtube.com/watch?v=xxxx",
+        "❌ Usage:\n/yt <search term o YouTube URL>\n\nHalimbawa:\n/yt tere naino\n/yt https://youtube.com/watch?v=xxxx",
         threadID,
         messageID
       );
     }
 
-    const url = args[0];
+    const query = args.join(" ");
+    const isURL = /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//i.test(query);
 
-    if (!/^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//i.test(url)) {
-      return api.sendMessage(
-        "❌ Invalid YouTube URL.",
-        threadID,
-        messageID
-      );
-    }
+    // Kung search term, gagamitin ang ytsearch1: para kunin lang ang unang result
+    const target = isURL ? query : `ytsearch1:${query}`;
 
-    const tempDir = path.join(__dirname, "../temp");
+    const cacheDir = path.join(__dirname, "cache");
+    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
 
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
-    }
+    const outputTemplate = path.join(cacheDir, `yt_${Date.now()}.%(ext)s`);
 
-    const output = path.join(
-      tempDir,
-      `yt_${Date.now()}_${Math.random().toString(36).slice(2)}.mp4`
-    );
-
+    let processingMsg;
     try {
-      await api.sendMessage(
-        "⏳ Downloading YouTube video...\n\nPlease wait.",
+      processingMsg = await api.sendMessage(
+        `🔎 Hinahanap: "${query}"...\n⏳ Naghihintay, pwedeng matagal kung malaking file.`,
         threadID
       );
 
-      // Check yt-dlp
-      let ytdlp = "yt-dlp";
+      // Kunin muna ang info (title) gamit ang yt-dlp --print
+      const { stdout: infoOut } = await execFileAsync("yt-dlp", [
+        target,
+        "--print",
+        "%(title)s|||%(id)s",
+        "--no-playlist",
+        "--playlist-items", "1"
+      ]);
 
-      try {
-        await execFileAsync("yt-dlp", ["--version"]);
-      } catch {
-        // Try Python module
-        try {
-          await execFileAsync("python", ["-m", "yt_dlp", "--version"]);
-          ytdlp = "python";
-        } catch {
-          return api.sendMessage(
-            "❌ yt-dlp is not installed.\n\nInstall it using:\n\npip install -U yt-dlp",
-            threadID,
-            messageID
-          );
-        }
+      const [title] = infoOut.trim().split("|||");
+
+      // I-download ang video (best quality, mp4 kung kaya)
+      await execFileAsync("yt-dlp", [
+        target,
+        "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best",
+        "--no-playlist",
+        "--playlist-items", "1",
+        "--merge-output-format", "mp4",
+        "-o", outputTemplate,
+        "--max-filesize", "0" // walang size limit sa pag-download
+      ]);
+
+      // Hanapin ang na-download na file (dahil dynamic ang extension)
+      const files = fs.readdirSync(cacheDir).filter(f => f.startsWith(path.basename(outputTemplate).split(".")[0]));
+      if (!files.length) {
+        throw new Error("Walang nabuo na file pagkatapos mag-download.");
       }
 
-      let commandArgs;
-
-      if (ytdlp === "python") {
-        commandArgs = [
-          "-m",
-          "yt_dlp",
-          "-f",
-          "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b",
-          "--merge-output-format",
-          "mp4",
-          "--no-playlist",
-          "--max-filesize",
-          "50M",
-          "-o",
-          output,
-          url
-        ];
-      } else {
-        commandArgs = [
-          "-f",
-          "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b",
-          "--merge-output-format",
-          "mp4",
-          "--no-playlist",
-          "--max-filesize",
-          "50M",
-          "-o",
-          output,
-          url
-        ];
-      }
-
-      try {
-        await execFileAsync(ytdlp, commandArgs, {
-          timeout: 180000,
-          maxBuffer: 10 * 1024 * 1024
-        });
-      } catch (err) {
-        let error = err.stderr || err.stdout || err.message || "";
-
-        if (error.includes("Sign in")) {
-          error = "YouTube requires sign-in for this video.";
-        } else if (error.includes("Private video")) {
-          error = "The video is private.";
-        } else if (error.includes("Video unavailable")) {
-          error = "The video is unavailable.";
-        } else if (
-          error.includes("File is larger than max-filesize")
-        ) {
-          error = "The video is larger than the 50MB limit.";
-        } else if (error.includes("Unsupported URL")) {
-          error = "Unsupported or invalid YouTube URL.";
-        } else if (error.includes("ffmpeg")) {
-          error = "FFmpeg is missing. Install it using: pkg install ffmpeg -y";
-        } else {
-          error = error.slice(-1500);
-        }
-
-        throw new Error(error);
-      }
-
-      if (!fs.existsSync(output)) {
-        throw new Error(
-          "Download finished but the output video was not found."
-        );
-      }
-
-      const stats = fs.statSync(output);
-
-      if (stats.size === 0) {
-        throw new Error("Downloaded file is empty.");
-      }
-
-      // Messenger attachment limit protection
-      if (stats.size > 50 * 1024 * 1024) {
-        fs.unlinkSync(output);
-
-        return api.sendMessage(
-          "❌ Hindi ma-send ang video.\n\n" +
-          "📦 File size is larger than 50MB.",
-          threadID,
-          messageID
-        );
-      }
+      const filePath = path.join(cacheDir, files[0]);
+      const stats = fs.statSync(filePath);
+      const sizeMB = (stats.size / (1024 * 1024)).toFixed(1);
 
       await api.sendMessage(
         {
-          body: "✅ YouTube video downloaded!",
-          attachment: fs.createReadStream(output)
+          body: `✅ ${title}\n📦 Size: ${sizeMB}MB`,
+          attachment: fs.createReadStream(filePath)
         },
         threadID,
+        (err) => {
+          // Linisin ang cache pagkatapos ipadala, kahit anong resulta
+          fs.unlink(filePath, () => {});
+          if (err) {
+            console.error("YT send error:", err);
+            api.sendMessage(
+              `⚠️ Na-download ang video pero hindi ma-send (baka masyadong malaki para sa Messenger). Size: ${sizeMB}MB`,
+              threadID
+            );
+          }
+        },
         messageID
       );
-
-      // Cleanup
-      setTimeout(() => {
-        try {
-          if (fs.existsSync(output)) {
-            fs.unlinkSync(output);
-          }
-        } catch {}
-      }, 10000);
-
-    } catch (error) {
-      console.error("[YT ERROR]", error);
-
-      if (fs.existsSync(output)) {
-        try {
-          fs.unlinkSync(output);
-        } catch {}
-      }
-
-      return api.sendMessage(
-        "❌ Hindi ma-download ang video.\n\n" +
-        "🔎 Error:\n" +
-        `${error.message || "Unknown error"}\n\n` +
-        "Possible fix:\n" +
-        "• Update yt-dlp: pip install -U yt-dlp\n" +
-        "• Install FFmpeg: pkg install ffmpeg -y\n" +
-        "• Check kung available ang video\n" +
-        "• Try another YouTube URL",
+    } catch (err) {
+      console.error("YT command error:", err);
+      api.sendMessage(
+        `❌ May error sa pag-download: ${err.message || "Unknown error"}`,
         threadID,
         messageID
       );
