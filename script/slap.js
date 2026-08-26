@@ -1,21 +1,56 @@
-module.exports.config = {
-  name: "slap",
-  version: "1.0.0",
-  hasPermission: 0,
-  credits: "sinzu",
-  description: "Sampalin ang kaibigan sa GC",
-  usePrefix: true,
-  commandCategory: "Fun",
-  usages: "!slap @mention",
-  cooldowns: 3
-};
+const axios = require("axios");
 
-module.exports.run = async function({ api, event }) {
-  const { threadID, messageID, senderID, mentions } = event;
-  if (!mentions || Object.keys(mentions).length === 0) {
-    return api.sendMessage("⚠️ I-tag (@mention) ang taong gusto mong sampalin! 😂", threadID, messageID);
+module.exports = {
+  config: {
+    name: "slap",
+    aliases: ["sampal"],
+    version: "1.0",
+    role: 0,
+    hasPrefix: true,
+    description: "Sampal ng user gamit ang random GIF",
+    usage: "/slap [username]"
+  },
+
+  async run({ api, event, args }) {
+    const { threadID, messageID } = event;
+
+    if (!args[0]) {
+      return api.sendMessage(
+        "⚠️ Usage: /slap [username]\nExample: /slap Juan",
+        threadID,
+        messageID
+      );
+    }
+
+    const target = args.join(" ");
+
+    const gifs = [
+      "https://media.giphy.com/media/3o6Zt6D8xJ9g8/giphy.gif",
+      "https://media.giphy.com/media/jLeyZWgtwgr2U/giphy.gif",
+      "https://media.giphy.com/media/xT9IgG50Fb7Mi0prBC/giphy.gif"
+    ];
+
+    const gif = gifs[Math.floor(Math.random() * gifs.length)];
+
+    try {
+      const response = await axios.get(gif, {
+        responseType: "stream"
+      });
+
+      return api.sendMessage(
+        {
+          body: `👋 ${event.senderID ? "@" : ""}${target} was slapped! 💥`,
+          attachment: response.data
+        },
+        threadID,
+        messageID
+      );
+    } catch (error) {
+      return api.sendMessage(
+        `👋 ${target} was slapped! 💥`,
+        threadID,
+        messageID
+      );
+    }
   }
-  const targetName = Object.values(mentions)[0];
-  api.sendMessage(`👋💥 Sinampal ni user ang pilyong si ${targetName}! Aray! 🤣`, threadID, messageID);
 };
-module.exports.onStart = module.exports.run;
