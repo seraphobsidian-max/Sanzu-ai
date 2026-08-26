@@ -1,99 +1,47 @@
-const fs = require("fs");
-
 module.exports = {
   config: {
     name: "setbal",
-    aliases: ["setbalance", "setmoney"],
+    aliases: ["setbalance", "setcash"],
     version: "1.0.0",
     role: 1,
     hasPrefix: true,
-    description: "Set user balance",
-    usage: "/setbal @tag [amount]",
-    credits: "sinzu",
-    cooldown: 3
+    description: "Set user's money at coins."
   },
 
-  run: async ({ api, event, args }) => {
-    const file = "./data/economy.json";
+  async run({ api, event, args, usersData }) {
+    const { threadID, messageID } = event;
 
-    if (!fs.existsSync(file)) {
-      fs.writeFileSync(file, "{}", "utf8");
-    }
+    const uid =
+      Object.keys(event.mentions || {})[0] ||
+      event.messageReply?.senderID;
 
-    let economy = {};
+    const amount = parseInt(args[args.length - 1]);
 
-    try {
-      economy = JSON.parse(
-        fs.readFileSync(file, "utf8")
-      );
-    } catch {
-      economy = {};
-    }
-
-    let targetID = null;
-
-    // Reply target
-    if (event.messageReply?.senderID) {
-      targetID = event.messageReply.senderID;
-    }
-
-    // Mention target
-    if (
-      !targetID &&
-      event.mentions &&
-      Object.keys(event.mentions).length
-    ) {
-      targetID = Object.keys(event.mentions)[0];
-    }
-
-    if (!targetID) {
+    if (!uid || isNaN(amount)) {
       return api.sendMessage(
-        "❌ I-tag ang user o mag-reply sa message niya.\n\nExample:\n/setbal @user 5000",
-        event.threadID,
-        event.messageID
+        "💰 Usage:\n/setbal @user 50000\nor reply sa user:\n/setbal 50000",
+        threadID,
+        messageID
       );
     }
 
-    const amount = Number(
-      args.find(arg => /^\d+(\.\d+)?$/.test(arg))
-    );
+    // Kunin ang data ng user
+    const user = await usersData.get(uid);
 
-    if (!Number.isFinite(amount) || amount < 0) {
-      return api.sendMessage(
-        "❌ Invalid amount.\n\nExample:\n/setbal @user 5000",
-        event.threadID,
-        event.messageID
-      );
-    }
+    // Sabay i-update ang Money at Coins
+    await usersData.set(uid, {
+      ...user,
+      money: amount,
+      coins: amount
+    });
 
-    economy[targetID] = {
-      ...(economy[targetID] || {}),
-      balance: amount
-    };
-
-    fs.writeFileSync(
-      file,
-      JSON.stringify(economy, null, 2),
-      "utf8"
-    );
-
-    let name = targetID;
-
-    try {
-      const info = await api.getUserInfo(targetID);
-      name = info?.[targetID]?.name || targetID;
-    } catch {}
-
-    return api.sendMessage(
-      `✅ 𝐁𝐀𝐋𝐀𝐍𝐂𝐄 𝐔𝐏𝐃𝐀𝐓𝐄𝐃
-
-👤 User: ${name}
-🆔 UID: ${targetID}
-💰 New Balance: $${amount.toLocaleString()}
-
-👑 Set by Admin`,
-      event.threadID,
-      event.messageID
+    api.sendMessage(
+      `✅ 𝗕𝗮𝗹𝗮𝗻𝗰𝗲 𝗨𝗽𝗱𝗮𝘁𝗲𝗱!\n\n` +
+      `👤 User: ${uid}\n` +
+      `💵 Money: $${amount.toLocaleString()}\n` +
+      `🪙 Coins: ${amount.toLocaleString()}`,
+      threadID,
+      messageID
     );
   }
 };
