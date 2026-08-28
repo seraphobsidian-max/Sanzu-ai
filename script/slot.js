@@ -3,7 +3,29 @@ const path = require("path");
 
 const dbPath = path.join(__dirname, "..", "data", "economy.json");
 
-function getEconomyData() {
+/**
+ * ===== CONCURRENCY FIX =====
+ * Dati: bawat call ay gumagawa ng sarili nitong read -> modify -> write.
+ * Kapag sabay-sabay (2+ users, o parallel command calls), pwedeng
+ * mag-overlap ang mga writes at may mawawalang update (race condition).
+ *
+ * Solusyon: isang shared "lock queue" (Promise chain) na nagpapatakbo
+ * ng bawat operation nang isa-isa lang (serialized), kahit tinawag
+ * sila nang sabay-sabay. Dagdag pa: atomic write gamit ang temp file
+ * + rename, para hindi masira ang JSON kung biglang na-interrupt
+ * ang process habang nagsusulat.
+ */
+let lockQueue = Promise.resolve();
+
+function withLock(fn) {
+  const run = lockQueue.then(() => fn());
+  // ikabit ang susunod na operation kahit magka-error ang kasalukuyan,
+  // para hindi permanenteng ma-stuck ang queue
+  lockQueue = run.catch(() => {});
+  return run;
+}
+
+function readEconomyDataRaw() {
   try {
     return JSON.parse(fs.readFileSync(dbPath, "utf8"));
   } catch {
@@ -11,13 +33,40 @@ function getEconomyData() {
   }
 }
 
-function saveEconomyData(data) {
-  fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), "utf8");
+function writeEconomyDataRaw(data) {
+  const tmpPath = dbPath + ".tmp";
+  fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), "utf8");
+  fs.renameSync(tmpPath, dbPath); // atomic sa karamihan ng filesystems
+}
+
+/**
+ * Gamitin ito kapag kailangan mong basahin LANG ang data
+ * (walang susunod na pagsusulat, e.g. para sa !balance command).
+ */
+function getEconomyData() {
+  return withLock(() => readEconomyDataRaw());
+}
+
+/**
+ * Ang pinaka-importante: gamitin ito para sa anumang command na
+ * READ -> MODIFY -> WRITE (tulad ng slot, daily, transfer, atbp).
+ * Ang buong operation ay isang atomic unit sa loob ng lock, kaya
+ * walang ibang command ang makaka-abala sa gitna ng proseso.
+ *
+ * updaterFn(data) => dapat mag-mutate o mag-return ng bagong data object.
+ */
+function updateEconomyData(updaterFn) {
+  return withLock(() => {
+    const data = readEconomyDataRaw();
+    const result = updaterFn(data) || data;
+    writeEconomyDataRaw(result);
+    return result;
+  });
 }
 
 module.exports.config = {
   name: "slot",
-  version: "1.0.0",
+  version: "1.1.0",
   hasPermission: 0,
   credits: "sinzu",
   description: "Maglaro ng Mega Casino Slot Machine gamit ang iyong coins",
@@ -28,70 +77,77 @@ module.exports.config = {
 };
 
 const symbols = ["🍒", "🍋", "🍇", "🔔", "⭐", "💎", "7️⃣"];
-
-module.exports.run = async function({ api, event, args }) {
-  const { threadID, messageID, senderID } = event;
-  const eco = getEconomyData();
-  if (!eco[senderID]) eco[senderID] = { coins: 1000, lastDaily: 0 };
-
-  const bet = parseInt(args[0]);
-  if (isNaN(bet) || bet < 50) {
-    return api.sendMessage("⚠️ Minimum na taya sa Slot Machine ay 🪙 50 Coins.\nHalimbawa: !slot 200", threadID, messageID);
-  }
-
-  if (eco[senderID].coins < bet) {
-    return api.sendMessage(`❌ Kulang ang iyong coins! Meron ka lamang 🪙 ${eco[senderID].coins.toLocaleString()} Coins.\nMag-type ng '!coins daily' para sa libreng barya.`, threadID, messageID);
-  }
-
-  // Deduct initial bet
-  eco[senderID].coins -= bet;
-
-  // Spin 3 reels
-  const r1 = symbols[Math.floor(Math.random() * symbols.length)];
-  const r2 = symbols[Math.floor(Math.random() * symbols.length)];
-  const r3 = symbols[Math.floor(Math.random() * symbols.length)];
-
-  let winAmount = 0;
-  let resultStatus = "";
-
-  if (r1 === "7️⃣" && r2 === "7️⃣" && r3 === "7️⃣") {
-    // MEGA JACKPOT x15
-    winAmount = bet * 15;
-    resultStatus = "🔥💥 MEGA ULTRA JACKPOT (x15) 💥🔥";
-  } else if (r1 === "💎" && r2 === "💎" && r3 === "💎") {
-    // DIAMOND JACKPOT x10
-    winAmount = bet * 10;
-    resultStatus = "💎✨ DIAMOND JACKPOT (x10) ✨💎";
-  } else if (r1 === r2 && r2 === r3) {
-    // TRIPLE MATCH x5
-    winAmount = bet * 5;
-    resultStatus = "🎉🌟 BIG WIN TRIPLE MATCH (x5) 🌟🎉";
-  } else if (r1 === r2 || r2 === r3 || r1 === r3) {
-    // DOUBLE MATCH x2
-    winAmount = bet * 2;
-    resultStatus = "✨ DOUBLE MATCH WIN (x2) ✨";
-  } else {
-    // LOSE
-    resultStatus = "💔 TALO! Better luck next spin! 💔";
-  }
-
-  eco[senderID].coins += winAmount;
-  saveEconomyData(eco);
-
-  const profitLossText = winAmount > 0 
-    ? `🏆 Nanalo ka ng: +🪙 ${winAmount.toLocaleString()} Coins!`
-    : `💸 Nabawas sa taya: -🪙 ${bet.toLocaleString()} Coins`;
-
-  const slotDisplay = `🎰 ═══ [ SANZU CASINO MEGA SLOT ] ═══ 🎰
-┌─────────────────────────┐
-│     [ ${r1} | ${r2} | ${r3} ]     │  <-- PAYLINE
-└─────────────────────────┘
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📢 Resulta: ${resultStatus}
-${profitLossText}
-💰 Kasalukuyang Balanse: 🪙 ${eco[senderID].coins.toLocaleString()} Coins
-━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
-
-  api.sendMessage(slotDisplay, threadID, messageID);
+const payouts = {
+  "7️⃣": 10,   // 3x 7️⃣ = 10x ng taya
+  "💎": 7,
+  "⭐": 5,
+  "🔔": 4,
+  "🍇": 3,
+  "🍋": 2,
+  "🍒": 2
 };
-module.exports.onStart = module.exports.run;
+
+function spin() {
+  return [0, 0, 0].map(() => symbols[Math.floor(Math.random() * symbols.length)]);
+}
+
+module.exports.run = async function ({ api, event, args }) {
+  const { threadID, messageID, senderID } = event;
+
+  const betInput = args[0];
+  const bet = parseInt(betInput, 10);
+
+  if (!betInput || isNaN(bet) || bet <= 0) {
+    return api.sendMessage(
+      "⚠️ Mag-lagay ng tamang halaga ng taya.\nHal: !slot 100",
+      threadID,
+      messageID
+    );
+  }
+
+  // Ang buong "check balance -> deduct -> spin -> credit winnings" ay
+  // isang unit na naka-lock, kaya kahit sabay-sabay mag-!slot ang
+  // parehong user (o magkaibang user), hindi sila mag-oo-overlap sa
+  // isa't isa at hindi mababaluktot ang coins.
+  let resultMessage;
+
+  await updateEconomyData((eco) => {
+    if (!eco[senderID]) eco[senderID] = { coins: 1000, lastDaily: 0 };
+    const user = eco[senderID];
+
+    if (bet > user.coins) {
+      resultMessage = `❌ Kulang ang coins mo. Balance mo: ${user.coins} 🪙`;
+      return eco; // walang binago, pero kailangan pa ring i-return/isulat
+    }
+
+    // bawasan muna ang taya
+    user.coins -= bet;
+
+    const result = spin();
+    const [a, b, c] = result;
+
+    let winnings = 0;
+    if (a === b && b === c) {
+      winnings = bet * (payouts[a] || 2);
+    } else if (a === b || b === c || a === c) {
+      winnings = Math.floor(bet * 1.5);
+    }
+
+    user.coins += winnings;
+
+    const net = winnings - bet;
+    const netText =
+      net > 0 ? `+${net} 🪙 (Panalo!)` : net < 0 ? `${net} 🪙 (Talo)` : `Break-even`;
+
+    resultMessage =
+      `🎰 [ ${result.join(" | ")} ] 🎰\n\n` +
+      `Taya: ${bet} 🪙\n` +
+      `Panalo: ${winnings} 🪙\n` +
+      `Resulta: ${netText}\n` +
+      `Balance ngayon: ${user.coins} 🪙`;
+
+    return eco;
+  });
+
+  return api.sendMessage(resultMessage, threadID, messageID);
+};
