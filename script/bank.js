@@ -9,9 +9,9 @@ module.exports.config = {
   usePrefix: true,
   commandCategory: "Casino",
   usages:
-    "!bank — tingnan ang balance\n" +
-    "!bank deposit <halaga|all>\n" +
-    "!bank withdraw <halaga|all>",
+    "/bank — tingnan ang balance\n" +
+    "/bank deposit <halaga|all>\n" +
+    "/bank withdraw <halaga|all>",
   cooldowns: 2
 };
 
@@ -19,7 +19,7 @@ module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID } = event;
   const action = (args[0] || "").toLowerCase();
 
-  // ===== !bank (walang args) — check balance lang, read-only =====
+  // ===== /bank (walang args) — check balance lang, read-only =====
   if (!action) {
     return updateEconomyData((eco) => {
       const user = ensureUser(eco, senderID);
@@ -37,7 +37,7 @@ module.exports.run = async function ({ api, event, args }) {
 
   if (action !== "deposit" && action !== "withdraw") {
     return api.sendMessage(
-      "⚠️ Gamitin: !bank deposit <halaga|all> o !bank withdraw <halaga|all>",
+      "⚠️ Gamitin: /bank deposit <halaga|all> o /bank withdraw <halaga|all>",
       threadID,
       messageID
     );
@@ -56,7 +56,7 @@ module.exports.run = async function ({ api, event, args }) {
           : parseInt(amountInput, 10);
 
       if (!amount || isNaN(amount) || amount <= 0) {
-        resultMessage = "⚠️ Mag-lagay ng tamang halaga. Hal: !bank deposit 100";
+        resultMessage = "⚠️ Mag-lagay ng tamang halaga. Hal: /bank deposit 100";
       } else if (amount > user.coins) {
         resultMessage = `❌ Kulang ang wallet mo. Meron ka lang ${user.coins} 🪙`;
       } else {
@@ -75,7 +75,7 @@ module.exports.run = async function ({ api, event, args }) {
           : parseInt(amountInput, 10);
 
       if (!amount || isNaN(amount) || amount <= 0) {
-        resultMessage = "⚠️ Mag-lagay ng tamang halaga. Hal: !bank withdraw 100";
+        resultMessage = "⚠️ Mag-lagay ng tamang halaga. Hal: /bank withdraw 100";
       } else if (amount > user.bank) {
         resultMessage = `❌ Kulang ang laman ng bangko mo. Meron ka lang ${user.bank} 🪙`;
       } else {
