@@ -1,74 +1,111 @@
-global.activeWarNameThreads = global.activeWarNameThreads || new Map();
-
-const gcWarTrashTalks = [
-	"INUTIL MGA TAO DITO 😂",
-	"WALANG MGA MAIBUGA HINA",
-	"IYAKIN MGA MIYEMBRO RITO",
-	"SINZUBOT OWNED THIS GC 🔥",
-	"LALABAN PA BA KAYO AH?",
-	"PANALO NA SI SINZUBOT",
-	"TULOG MO NA YAN HINA MO",
-	"PURO KAYO TALAK WALA MGA LAKAS",
-	"TAKOT PALAGAN SI SINZUBOT"
-];
-
 module.exports = {
-	config: {
-		name: "war",
-		version: "1.0.0",
-		author: "SinzuBot",
-		countDown: 3,
-		role: 1, // Admin Only
-		shortDescription: "Tuloy-tuloy na pagpalit ng GC Name hangga't 'di pinapatahy",
-		longDescription: "Magse-send ng tuloy-tuloy na pagpapalit ng GC Name gamit ang loop hangga't hindi pina-stop ng admin.",
-		category: "war",
-		guide: "{p}war [stop/off]"
-	},
+  config: {
+    name: "war",
+    version: "1.0.0",
+    author: "Bot Developer",
+    countDown: 5,
+    role: 2, // 2 = Admin / Bot Operator Only
+    shortDescription: {
+      en: "Spam GC Name and Auto Trash Talk"
+    },
+    longDescription: {
+      en: "Automated GC Name change spam and auto-reply trash talker."
+    },
+    category: "war",
+    guide: {
+      en: "{p}war [on/off]"
+    }
+  },
 
-	onStart: async function ({ api, event, args, permission }) {
-		const { threadID, messageID } = event;
-		const action = args[0]?.toLowerCase();
+  // Mga gagamiting salita / pang-trashtalk
+  trashTalkList: [
+    "Umiyak ka na lang dito haha!",
+    "Ano ba yan, walang maipaglaban?",
+    "Basura pa rin hanggang ngayon ah!",
+    "Matulog ka na lang, hindi mo kaya 'to.",
+    "Bakit ka nandito? Walang naghahanap sa'yo!",
+    "Chat ka pa, wala namang may paki!"
+  ],
 
-		// Check permission: Admin Only
-		if (permission < 1) {
-			return api.sendMessage("⚠️ **Admin Only**: Mga Admin lang ang pwedeng mag-activate o mag-deactivate ng War Mode!", threadID, messageID);
-		}
+  // Global State Variable para sa Sanzu
+  onStart: async function ({ api, event, args, message, role }) {
+    const { threadID } = event;
 
-		// STOP / OFF COMMAND: /war stop
-		if (action === "stop" || action === "off" || action === "unlock") {
-			if (global.activeWarNameThreads.has(threadID)) {
-				// Clear ang interval para huminto ang loop
-				const intervalId = global.activeWarNameThreads.get(threadID);
-				clearInterval(intervalId);
-				global.activeWarNameThreads.delete(threadID);
+    // Direct Check kung Admin ang nag-run
+    if (role < 2) {
+      return message.reply("⚠️ Admin lang ang pwedeng gumamit ng war command!");
+    }
 
-				return api.sendMessage("🛑 **WAR MODE OFF**: Inihinto na ng Admin ang tuloy-tuloy na GC Name war!", threadID, messageID);
-			} else {
-				return api.sendMessage("⚠️ Walang aktibong War Mode sa GC na ito.", threadID, messageID);
-			}
-		}
+    global.sanzuWarState = global.sanzuWarState || {
+      active: false,
+      interval: null,
+      targetThread: null
+    };
 
-		// Kapag Naka-ON na
-		if (global.activeWarNameThreads.has(threadID)) {
-			return api.sendMessage("🔥 Naka-ON na at tumatakbo na ang GC Name War sa GC na ito!\nI-type ang `/war stop` para ihinto.", threadID, messageID);
-		}
+    const action = args[0] ? args[0].toLowerCase() : "";
 
-		const prefix = process.env.PREFIX || "/";
-		api.sendMessage(`⚔️ **PERPETUAL GC NAME WAR ACTIVATED!** ⚔️\n\nHindi titigil ang bot sa pagpapalit ng pangalan ng GC hangga't hindi mo pinapatay!\n\n💡 *Para ihinto, i-type ng Admin: \`${prefix}war stop\`*`, threadID);
+    // ACTIVATION METHOD (/war o /war on)
+    if (action === "on" || action === "start" || !action) {
+      if (global.sanzuWarState.active) {
+        return message.reply("🔥 War Mode is already ACTIVE in this group!");
+      }
 
-		let index = 0;
+      global.sanzuWarState.active = true;
+      global.sanzuWarState.targetThread = threadID;
 
-		// Mag-set ng Loop Interval (nagpapalit ng pangalan ng GC bawat 3 seconds)
-		const intervalId = setInterval(() => {
-			const newName = gcWarTrashTalks[index % gcWarTrashTalks.length];
-			index++;
+      message.reply("🔥 WAR MODE ACTIVATED! Sisimulan na ang GC Name Spam at Auto-Reply...");
 
-			api.setTitle(newName, threadID, (err) => {
-				if (err) console.error("Error setting continuous GC Title:", err);
-			});
-		}, 3000); // 3 seconds delay bawat palit para iwas-ban ng Facebook
+      let counter = 0;
+      global.sanzuWarState.interval = setInterval(() => {
+        if (!global.sanzuWarState.active) return;
 
-		// I-save ang interval ID sa global state para mapatay kapag nag /war stop
-		global.activeWarNameThreads.set(threadID, intervalId);
-	}
+        const randomPhrase = this.trashTalkList[Math.floor(Math.random() * this.trashTalkList.length)];
+        const newGCName = `${randomPhrase} [${counter++}]`;
+
+        api.setTitle(newGCName, threadID, (err) => {
+          if (err) console.error("Failed to change GC Name:", err);
+        });
+      }, 3000); // Tumatakbo bawat 3 seconds
+
+      return;
+    }
+
+    // DEACTIVATION METHOD (/war off o mag-type ng "off")
+    if (action === "off" || action === "stop") {
+      if (!global.sanzuWarState.active) {
+        return message.reply("Naka-OFF na ang War Mode.");
+      }
+
+      global.sanzuWarState.active = false;
+      clearInterval(global.sanzuWarState.interval);
+      global.sanzuWarState.interval = null;
+      global.sanzuWarState.targetThread = null;
+
+      return message.reply("🛑 WAR MODE DEACTIVATED! Huminto na ang spam.");
+    }
+  },
+
+  // AUTO-REPLY ENGINE (Tumitira sa kahit kaninong mag-drop ng chat habang ACTIVE ang war)
+  onChat: async function ({ api, event, message }) {
+    if (!global.sanzuWarState || !global.sanzuWarState.active) return;
+
+    const { threadID, senderID, body, type } = event;
+
+    // Wag mag-reply kung sariling chat ng bot, o kung walang text
+    if (type !== "message" || !body || senderID === api.getCurrentUserID()) return;
+
+    // Iniiwasang basahin ang stop/off command bilang trigger ng reply
+    const text = body.trim().toLowerCase();
+    if (text === "off" || text.includes("/war")) return;
+
+    const randomTrash = this.trashTalkList[Math.floor(Math.random() * this.trashTalkList.length)];
+
+    api.sendMessage({
+      body: randomTrash,
+      mentions: [{
+        tag: `@${senderID}`,
+        id: senderID
+      }]
+    }, threadID);
+  }
 };
